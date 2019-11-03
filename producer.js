@@ -10,23 +10,32 @@ function getRandomInt(max) {
 console.log(getRandomInt(3));
 // expected output: 0, 1 or 2
 
-sock.bindSync('tcp://127.0.0.1:3000');
-sock_pull.bindSync('tcp://127.0.0.1:3001');
+sock.connect('tcp://127.0.0.1:3000');
+sock_pull.connect('tcp://127.0.0.1:3001');
 console.log('Producer bound to port 3000');
 
 sock_pull.on('message', function (msg) {
   // console.info(JSON.parse(msg))
 });
 
-const MAX = 10000;
-for (let i = 0; i < MAX; i++) {
+const MAX = 1_000_000;
 
+const items = [];
+for (let i = 0; i < MAX; i++) {
   const obj = {
     i: i,
     id: getRandomInt(10),
     value: getRandomInt(10),
+    event: "increment",
   };
-  sock.send(JSON.stringify(obj));
-  console.info("send msg", JSON.stringify(obj));
+  items.push(obj);
 }
+
+items.forEach((item) => {
+  let i = item.i;
+  sock.send(JSON.stringify(item));
+  if (i % 100000 === 0) {
+    console.info("send msg", i, JSON.stringify(item));
+  }
+});
 console.info("finished");

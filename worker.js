@@ -3,19 +3,23 @@ const zmq = require('zeromq');
 const sock = zmq.socket('pull');
 const sock_push = zmq.socket('push');
 
-sock.connect('tcp://127.0.0.1:3000');
-sock_push.connect('tcp://127.0.0.1:3001');
+sock.bindSync('tcp://127.0.0.1:3000');
+sock_push.bindSync('tcp://127.0.0.1:3001');
 console.log('Worker connected to port 3000');
 
 const balances = {};
 
 
+let eventNum = 0;
 sock.on('message', function (msg) {
   let obj = JSON.parse(msg);
   let target = balances[obj.id];
   if (target) {
-    if(obj.event === "add")
-    target.value = target.value + obj.value;
+    if (obj.event === "increment") {
+      target.value = target.value + obj.value;
+    } else if (obj.event === "decrement") {
+      target.value = target.value - obj.value;
+    }
     target.count++;
   } else {
     // Init
@@ -25,12 +29,13 @@ sock.on('message', function (msg) {
       count: 1
     }
   }
-  if (JSON.parse(msg).i % 100 === 0) {
-    console.log('work: %s', msg.toString());
+  eventNum++;
+  if (JSON.parse(msg).i % 100000 === 0) {
+    console.log('work:', eventNum, msg.toString());
   }
-  sock_push.send(JSON.stringify({"event": "ack", "i": obj.i}));
+  // sock_push.send(JSON.stringify({"event": "ack", "i": obj.i}));
 });
 
 setInterval(() => {
-  console.info(balances);
+  console.info(eventNum, balances);
 }, 1000);
